@@ -1,0 +1,569 @@
+openapi: 3.0.3
+info:
+  title: SagaPay Payments API
+  description: |
+    SagaPay Payments API - Your gateway to seamless payment processing.
+    
+    This API is powered by Surfboard Payments and provides full access to:
+    - Merchant management
+    - Store and terminal configuration
+    - Transaction processing
+    - Refunds and settlements
+    
+    ## Authentication
+    
+    All requests require an API key. Include it in your request headers:
+    
+    ```
+    X-Api-Key: spay_your_api_key_here
+    ```
+    
+    Or use Bearer authentication:
+    
+    ```
+    Authorization: Bearer spay_your_api_key_here
+    ```
+    
+    ## Rate Limits
+    
+    Each API key has a rate limit (default: 100 requests/minute).
+    Check response headers for your current usage:
+    
+    - `X-RateLimit-Limit`: Maximum requests per minute
+    - `X-RateLimit-Remaining`: Remaining requests in current window
+    
+  version: 1.0.0
+  contact:
+    name: SagaPay Support
+    email: support@sagapay.no
+    url: https://sagapay.no
+  license:
+    name: Proprietary
+    
+servers:
+  - url: https://api.sagapay.no/api/v1
+    description: Production server
+  - url: https://api-staging.sagapay.no/api/v1
+    description: Staging server
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+
+tags:
+  - name: Merchants
+    description: Merchant management operations
+  - name: Stores
+    description: Store management for merchants
+  - name: Terminals
+    description: Terminal management and configuration
+  - name: Transactions
+    description: Transaction processing and queries
+  - name: Refunds
+    description: Refund processing
+
+paths:
+  /merchants:
+    get:
+      tags:
+        - Merchants
+      summary: List all merchants
+      description: Retrieve a list of all merchants associated with your account
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of merchants
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Merchant'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          
+    post:
+      tags:
+        - Merchants
+      summary: Create a new merchant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMerchantRequest'
+      responses:
+        '201':
+          description: Merchant created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Merchant'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /merchants/{merchantId}:
+    get:
+      tags:
+        - Merchants
+      summary: Get merchant details
+      parameters:
+        - $ref: '#/components/parameters/MerchantId'
+      responses:
+        '200':
+          description: Merchant details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Merchant'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /merchants/{merchantId}/stores:
+    get:
+      tags:
+        - Stores
+      summary: List merchant stores
+      parameters:
+        - $ref: '#/components/parameters/MerchantId'
+      responses:
+        '200':
+          description: List of stores
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Store'
+
+    post:
+      tags:
+        - Stores
+      summary: Create a new store
+      parameters:
+        - $ref: '#/components/parameters/MerchantId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStoreRequest'
+      responses:
+        '201':
+          description: Store created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Store'
+
+  /merchants/{merchantId}/stores/{storeId}:
+    get:
+      tags:
+        - Stores
+      summary: Get store details
+      parameters:
+        - $ref: '#/components/parameters/MerchantId'
+        - $ref: '#/components/parameters/StoreId'
+      responses:
+        '200':
+          description: Store details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Store'
+
+  /merchants/{merchantId}/stores/{storeId}/terminals:
+    get:
+      tags:
+        - Terminals
+      summary: List store terminals
+      parameters:
+        - $ref: '#/components/parameters/MerchantId'
+        - $ref: '#/components/parameters/StoreId'
+      responses:
+        '200':
+          description: List of terminals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Terminal'
+
+    post:
+      tags:
+        - Terminals
+      summary: Create a new terminal
+      parameters:
+        - $ref: '#/components/parameters/MerchantId'
+        - $ref: '#/components/parameters/StoreId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTerminalRequest'
+      responses:
+        '201':
+          description: Terminal created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Terminal'
+
+  /transactions:
+    get:
+      tags:
+        - Transactions
+      summary: List transactions
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, completed, failed, refunded]
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of transactions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Transaction'
+
+  /transactions/{transactionId}:
+    get:
+      tags:
+        - Transactions
+      summary: Get transaction details
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transaction details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+
+  /transactions/{transactionId}/refund:
+    post:
+      tags:
+        - Refunds
+      summary: Refund a transaction
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefundRequest'
+      responses:
+        '200':
+          description: Refund processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Refund'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Your SagaPay API key (starts with spay_)
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Bearer token authentication
+
+  parameters:
+    MerchantId:
+      name: merchantId
+      in: path
+      required: true
+      description: Unique merchant identifier
+      schema:
+        type: string
+        example: mer_abc123
+    StoreId:
+      name: storeId
+      in: path
+      required: true
+      description: Unique store identifier
+      schema:
+        type: string
+        example: sto_xyz789
+
+  schemas:
+    Merchant:
+      type: object
+      properties:
+        id:
+          type: string
+          example: mer_abc123
+        name:
+          type: string
+          example: Kaffebaren AS
+        organizationNumber:
+          type: string
+          example: "912345678"
+        email:
+          type: string
+          example: kontakt@kaffebaren.no
+        status:
+          type: string
+          enum: [active, pending, suspended]
+        createdAt:
+          type: string
+          format: date-time
+        
+    CreateMerchantRequest:
+      type: object
+      required:
+        - name
+        - organizationNumber
+        - email
+      properties:
+        name:
+          type: string
+        organizationNumber:
+          type: string
+        email:
+          type: string
+        address:
+          type: object
+          properties:
+            street:
+              type: string
+            city:
+              type: string
+            postalCode:
+              type: string
+            country:
+              type: string
+
+    Store:
+      type: object
+      properties:
+        id:
+          type: string
+          example: sto_xyz789
+        merchantId:
+          type: string
+        name:
+          type: string
+          example: Kaffebaren Sentrum
+        address:
+          type: object
+          properties:
+            street:
+              type: string
+            city:
+              type: string
+            postalCode:
+              type: string
+        status:
+          type: string
+          enum: [active, inactive]
+
+    CreateStoreRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        address:
+          type: object
+
+    Terminal:
+      type: object
+      properties:
+        id:
+          type: string
+          example: trm_def456
+        storeId:
+          type: string
+        name:
+          type: string
+          example: POS Terminal 1
+        type:
+          type: string
+          enum: [physical, virtual, self-hosted]
+        status:
+          type: string
+          enum: [active, inactive, pending]
+        publicKey:
+          type: string
+          description: Terminal's public key for secure communication
+
+    CreateTerminalRequest:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [physical, virtual, self-hosted]
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+          example: txn_ghi789
+        merchantId:
+          type: string
+        storeId:
+          type: string
+        terminalId:
+          type: string
+        amount:
+          type: integer
+          description: Amount in smallest currency unit (øre for NOK)
+          example: 15000
+        currency:
+          type: string
+          example: NOK
+        status:
+          type: string
+          enum: [pending, completed, failed, refunded]
+        paymentMethod:
+          type: string
+          enum: [card, vipps, swish, mobilepay]
+        createdAt:
+          type: string
+          format: date-time
+
+    RefundRequest:
+      type: object
+      properties:
+        amount:
+          type: integer
+          description: Amount to refund (omit for full refund)
+        reason:
+          type: string
+
+    Refund:
+      type: object
+      properties:
+        id:
+          type: string
+        transactionId:
+          type: string
+        amount:
+          type: integer
+        status:
+          type: string
+          enum: [pending, completed, failed]
+        createdAt:
+          type: string
+          format: date-time
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+
+  responses:
+    Unauthorized:
+      description: Unauthorized - Invalid or missing API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Unauthorized
+            message: Invalid API key
+    BadRequest:
+      description: Bad Request - Invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Not Found
+            message: Resource not found
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Too Many Requests
+            message: Rate limit of 100 requests per minute exceeded
